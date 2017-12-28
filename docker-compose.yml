@@ -1,0 +1,47 @@
+version: '3'
+services:
+  server:
+    build:
+      context: ./libroute
+    volumes:
+     - "./libroute/sqlite:/usr/src/app/sqlite"
+     - "./libroute/output:/usr/src/app/output"
+     - "./libroute/repos:/usr/src/app/repos"
+    ports:
+     - "3000:3000"
+    networks:
+     - libroute
+  data:
+    image: nginx
+    volumes:
+      - "./libroute/output:/usr/share/nginx/html"
+      - "./nginx/default.conf:/etc/nginx/conf.d/default.conf"
+    networks:
+     - libroute
+    ports:
+     - "8080:80"
+  worker:
+    build:
+      context: ./libroute
+    volumes:
+     - "./libroute/sqlite:/usr/src/app/sqlite"
+     - "./libroute/output:/usr/src/app/output"
+     - "./libroute/repos:/usr/src/app/repos"
+    command: rake jobs:work
+    tty: true
+    environment:
+     - "DOCKER_HOST=tcp://dind:2375"
+    networks:
+     - libroute
+  dind:
+    build:
+      context: ./dind
+    privileged: true
+    networks:
+     - libroute
+    volumes:
+     - './dind/data:/var/lib/docker'
+    command: --storage-driver=overlay
+networks:
+  libroute:
+    driver: bridge
